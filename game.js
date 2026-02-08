@@ -20,11 +20,11 @@ const CONFIG = {
   BAD_WINDOW: 200,
   NOTE_R: 22,
   BIG_NOTE_R: 33,
-  // Touch drum
-  TDRUM_X: 480,
-  TDRUM_Y: 460,
-  TDRUM_OR: 85,
-  TDRUM_IR: 48,
+  // Touch drums (left & right)
+  TDRUM_LX: 155, TDRUM_RX: 805,
+  TDRUM_Y: 478,
+  TDRUM_OR: 95,
+  TDRUM_IR: 55,
   // Mic
   MIC_FFT: 2048,
   MIC_SMOOTH: 0.8,
@@ -678,8 +678,13 @@ document.addEventListener('keydown', e => {
 document.addEventListener('keyup', e => { keys[e.code] = false; });
 
 function drumHitType(x, y) {
-  const dx = x - CONFIG.TDRUM_X, dy = y - CONFIG.TDRUM_Y, dist = Math.sqrt(dx * dx + dy * dy);
-  if (dist <= CONFIG.TDRUM_IR) return 'don'; if (dist <= CONFIG.TDRUM_OR) return 'ka'; return null;
+  const dy = y - CONFIG.TDRUM_Y, or = CONFIG.TDRUM_OR, ir = CONFIG.TDRUM_IR;
+  for (const cx of [CONFIG.TDRUM_LX, CONFIG.TDRUM_RX]) {
+    const dist = Math.sqrt((x - cx) ** 2 + dy ** 2);
+    if (dist <= ir) return 'don';
+    if (dist <= or) return 'ka';
+  }
+  return null;
 }
 function ptr(e) {
   const r = canvas.getBoundingClientRect();
@@ -1268,27 +1273,42 @@ function drawFx() {
 
 // ─── Touch Drum ──────────────────────────────────
 function drawTDrum() {
-  const x = CONFIG.TDRUM_X, y = CONFIG.TDRUM_Y, or = CONFIG.TDRUM_OR, ir = CONFIG.TDRUM_IR;
-
-  ctx.beginPath(); ctx.arc(x, y + 4, or + 4, 0, Math.PI * 2);
-  ctx.fillStyle = 'rgba(0,0,0,0.2)'; ctx.fill();
-
-  // Outer (KA)
-  ctx.beginPath(); ctx.arc(x, y, or, 0, Math.PI * 2);
-  ctx.fillStyle = G.dh.ka > 0 ? '#64B5F6' : '#1565C0'; ctx.fill();
-  ctx.strokeStyle = '#1E88E5'; ctx.lineWidth = 3; ctx.stroke();
-
-  // Inner (DON)
-  ctx.beginPath(); ctx.arc(x, y, ir, 0, Math.PI * 2);
-  ctx.fillStyle = G.dh.don > 0 ? '#EF9A9A' : '#C62828'; ctx.fill();
-  ctx.strokeStyle = '#E53935'; ctx.lineWidth = 2; ctx.stroke();
-
-  ctx.fillStyle = 'rgba(255,255,255,0.85)'; ctx.font = 'bold 18px sans-serif';
-  ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('쿵', x, y);
-  ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.font = '10px sans-serif';
-  ctx.fillText('딱', x, y - ir - 12);
-  ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.font = '11px monospace';
-  ctx.fillText('F / J', x, y + ir + 15); ctx.fillText('D / K', x, y + or + 13);
+  const y = CONFIG.TDRUM_Y, or = CONFIG.TDRUM_OR, ir = CONFIG.TDRUM_IR;
+  const drums = [
+    { x: CONFIG.TDRUM_LX, label: '왼손', keys: ['D', 'F'] },
+    { x: CONFIG.TDRUM_RX, label: '오른손', keys: ['J', 'K'] },
+  ];
+  for (const d of drums) {
+    const x = d.x;
+    // Shadow
+    ctx.beginPath(); ctx.arc(x, y + 4, or + 4, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(0,0,0,0.2)'; ctx.fill();
+    // Outer ring (KA)
+    ctx.beginPath(); ctx.arc(x, y, or, 0, Math.PI * 2);
+    ctx.fillStyle = G.dh.ka > 0 ? '#64B5F6' : '#1565C0'; ctx.fill();
+    ctx.strokeStyle = '#1E88E5'; ctx.lineWidth = 3; ctx.stroke();
+    // Inner circle (DON)
+    ctx.beginPath(); ctx.arc(x, y, ir, 0, Math.PI * 2);
+    ctx.fillStyle = G.dh.don > 0 ? '#EF9A9A' : '#C62828'; ctx.fill();
+    ctx.strokeStyle = '#E53935'; ctx.lineWidth = 2; ctx.stroke();
+    // Labels
+    ctx.fillStyle = 'rgba(255,255,255,0.85)'; ctx.font = 'bold 20px sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('쿵', x, y);
+    ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.font = '11px sans-serif';
+    ctx.fillText('딱', x, y - ir - 12);
+    // Hand label
+    ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.font = '11px sans-serif';
+    ctx.fillText(d.label, x, y + or + 15);
+    // Key hints
+    ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.font = '10px monospace';
+    ctx.fillText(d.keys[0] + ' 쿵 / ' + d.keys[1] + ' 딱', x, y - or - 10);
+  }
+  // MIC badge
+  if (G.micOn) {
+    ctx.fillStyle = 'rgba(76,175,80,0.7)'; ctx.font = 'bold 11px sans-serif';
+    ctx.textAlign = 'center'; ctx.fillText('MIC', 480, y + or + 15);
+  }
 }
 
 // ─── Progress Bar ────────────────────────────────
