@@ -1885,4 +1885,15 @@ function render() {
 
 canvas.width = CONFIG.WIDTH;
 canvas.height = CONFIG.HEIGHT;
+
+function resizeCanvas() {
+  const ratio = CONFIG.WIDTH / CONFIG.HEIGHT;
+  let w = window.innerWidth, h = window.innerHeight;
+  if (w / h > ratio) w = h * ratio; else h = w / ratio;
+  canvas.style.width = w + 'px';
+  canvas.style.height = h + 'px';
+}
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
+
 (function loop() { update(); render(); requestAnimationFrame(loop); })();
