@@ -444,7 +444,7 @@ const G = {
   soul: 0, fx: [], dh: { don: 0, ka: 0 },
   chr: 'idle', chrT: 0, chrJ: 0,
   tb: 0, fn: [], ft0: 0, fhc: 0,
-  lanterns: [], petals: [],
+  lanterns: [], petals: [], flowers: [], sparkles: [],
   // Pause
   paused: false, pauseT: 0, pauseSel: 0,
   // GO-GO
@@ -476,12 +476,33 @@ function initDeco() {
     G.lanterns.push({ x: 80 + i * 160, y: 60 + Math.random() * 30, phase: Math.random() * Math.PI * 2 });
   }
   G.petals = [];
-  for (let i = 0; i < 15; i++) {
+  for (let i = 0; i < 20; i++) {
     G.petals.push({
       x: Math.random() * CONFIG.WIDTH, y: Math.random() * CONFIG.HEIGHT,
-      vx: 0.3 + Math.random() * 0.5, vy: 0.5 + Math.random() * 0.8,
-      r: 2 + Math.random() * 3, rot: Math.random() * Math.PI * 2,
+      vx: 0.2 + Math.random() * 0.5, vy: 0.4 + Math.random() * 0.7,
+      r: 2 + Math.random() * 4, rot: Math.random() * Math.PI * 2,
       rv: 0.02 + Math.random() * 0.03,
+    });
+  }
+  // Decorative flowers
+  const fpos = [
+    [45,540,48],[915,535,44],[25,200,38],[935,180,35],
+    [140,500,30],[820,490,28],[60,370,22],[900,400,24],
+    [480,555,20],[300,530,18],[660,540,16],
+  ];
+  const fcols = ['#FF6D00','#FFD600','#FF1744','#FF9100','#E65100'];
+  G.flowers = fpos.map(([x,y,r]) => ({
+    x, y, r, n: 8 + Math.floor(Math.random() * 5),
+    c: fcols[Math.floor(Math.random() * fcols.length)],
+    ph: Math.random() * Math.PI * 2,
+  }));
+  // Sparkles
+  G.sparkles = [];
+  for (let i = 0; i < 30; i++) {
+    G.sparkles.push({
+      x: Math.random() * CONFIG.WIDTH, y: Math.random() * CONFIG.HEIGHT,
+      r: 1 + Math.random() * 2.5, ph: Math.random() * Math.PI * 2,
+      sp: 0.8 + Math.random() * 2,
     });
   }
 }
@@ -755,47 +776,102 @@ function drawRoundRect(x, y, w, h, r) {
 
 // ─── Background ──────────────────────────────────
 function drawBG() {
-  // Per-difficulty background
+  // Per-difficulty base gradient
   let bgc = ['#FF7043','#FF5722','#BF360C'];
   if ((G.st===ST.PLAYING||G.st===ST.FREE) && G.song) {
     const di = DIFFS.indexOf(G.song.diff);
     if (di >= 0) bgc = DIFF_BG[di];
   }
   const g = ctx.createLinearGradient(0, 0, 0, CONFIG.HEIGHT);
-  g.addColorStop(0, bgc[0]); g.addColorStop(0.4, bgc[1]); g.addColorStop(1, bgc[2]);
+  g.addColorStop(0, bgc[0]); g.addColorStop(0.5, bgc[1]); g.addColorStop(1, bgc[2]);
   ctx.fillStyle = g; ctx.fillRect(0, 0, CONFIG.WIDTH, CONFIG.HEIGHT);
 
-  // Wave pattern
-  ctx.strokeStyle = 'rgba(255,255,255,0.06)'; ctx.lineWidth = 2;
-  const t = performance.now() / 2000;
-  for (let row = 0; row < 8; row++) {
+  const t = performance.now() / 1000;
+
+  // Warm glow spots
+  for (const [cx,cy,r] of [[180,140,200],[780,420,220],[480,280,260]]) {
+    const rg = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+    rg.addColorStop(0, 'rgba(255,200,50,0.1)'); rg.addColorStop(1, 'rgba(255,200,50,0)');
+    ctx.fillStyle = rg; ctx.fillRect(cx - r, cy - r, r * 2, r * 2);
+  }
+
+  // Flowing ribbons
+  ctx.lineWidth = 3;
+  for (let i = 0; i < 5; i++) {
     ctx.beginPath();
-    for (let x = 0; x < CONFIG.WIDTH; x += 5) {
-      const yy = 40 + row * 70 + Math.sin(x / 80 + t + row) * 12;
+    ctx.strokeStyle = `rgba(255,${180+i*15},${40+i*25},0.12)`;
+    for (let x = 0; x <= CONFIG.WIDTH; x += 4) {
+      const yy = 80 + i * 110 + Math.sin(x/90 + t*0.4 + i*1.7) * 35 + Math.cos(x/55 + t*0.25 + i) * 18;
       x === 0 ? ctx.moveTo(x, yy) : ctx.lineTo(x, yy);
     }
     ctx.stroke();
   }
 
-  // Petals
+  // Decorative flowers
+  for (const f of G.flowers) {
+    const fr = f.r + Math.sin(t * 0.7 + f.ph) * 2;
+    ctx.save(); ctx.translate(f.x, f.y);
+    ctx.rotate(Math.sin(t * 0.2 + f.ph) * 0.04);
+    // Outer glow
+    const fg = ctx.createRadialGradient(0, 0, fr * 0.3, 0, 0, fr * 1.3);
+    fg.addColorStop(0, 'rgba(255,180,50,0.08)'); fg.addColorStop(1, 'rgba(255,180,50,0)');
+    ctx.fillStyle = fg; ctx.beginPath(); ctx.arc(0, 0, fr * 1.3, 0, Math.PI * 2); ctx.fill();
+    // Petals
+    for (let p = 0; p < f.n; p++) {
+      const a = (p / f.n) * Math.PI * 2;
+      ctx.save(); ctx.rotate(a);
+      ctx.fillStyle = f.c; ctx.globalAlpha = 0.55;
+      ctx.beginPath(); ctx.ellipse(fr * 0.55, 0, fr * 0.48, fr * 0.22, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.globalAlpha = 0.3; ctx.fillStyle = '#FFF';
+      ctx.beginPath(); ctx.ellipse(fr * 0.4, 0, fr * 0.2, fr * 0.08, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+    }
+    // Center
+    ctx.globalAlpha = 0.75; ctx.fillStyle = '#FFF8E1';
+    ctx.beginPath(); ctx.arc(0, 0, fr * 0.22, 0, Math.PI * 2); ctx.fill();
+    ctx.globalAlpha = 0.5; ctx.fillStyle = '#FFB300';
+    ctx.beginPath(); ctx.arc(0, 0, fr * 0.13, 0, Math.PI * 2); ctx.fill();
+    ctx.restore(); ctx.globalAlpha = 1;
+  }
+
+  // Cherry blossom petals
   for (const p of G.petals) {
     p.x += p.vx; p.y += p.vy; p.rot += p.rv;
     if (p.y > CONFIG.HEIGHT + 10) { p.y = -10; p.x = Math.random() * CONFIG.WIDTH; }
     if (p.x > CONFIG.WIDTH + 10) { p.x = -10; }
     ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot);
-    ctx.fillStyle = 'rgba(255,200,200,0.4)';
-    ctx.beginPath(); ctx.ellipse(0, 0, p.r, p.r * 0.6, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(255,183,197,0.45)';
+    ctx.beginPath(); ctx.ellipse(0, 0, p.r, p.r * 0.55, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(255,220,230,0.3)';
+    ctx.beginPath(); ctx.ellipse(p.r * 0.2, -p.r * 0.1, p.r * 0.4, p.r * 0.2, 0.3, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
+
+  // Sparkles
+  for (const s of G.sparkles) {
+    const a = 0.25 + Math.sin(t * s.sp + s.ph) * 0.25;
+    if (a <= 0.02) continue;
+    const sr = s.r * (0.7 + Math.sin(t * s.sp + s.ph) * 0.5);
+    ctx.save(); ctx.translate(s.x, s.y); ctx.rotate(Math.PI / 4);
+    ctx.fillStyle = `rgba(255,255,220,${a})`;
+    ctx.fillRect(-sr, -0.6, sr * 2, 1.2);
+    ctx.fillRect(-0.6, -sr, 1.2, sr * 2);
+    // Diamond center
+    ctx.fillStyle = `rgba(255,255,255,${a * 0.8})`;
+    ctx.beginPath(); ctx.arc(0, 0, sr * 0.4, 0, Math.PI * 2); ctx.fill();
     ctx.restore();
   }
 
   // Lanterns
-  const lt = performance.now() / 1000;
   for (const l of G.lanterns) {
-    const ly = l.y + Math.sin(lt + l.phase) * 5;
-    // String
-    ctx.strokeStyle = 'rgba(0,0,0,0.3)'; ctx.lineWidth = 1;
+    const ly = l.y + Math.sin(t + l.phase) * 5;
+    ctx.strokeStyle = 'rgba(0,0,0,0.25)'; ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(l.x, 0); ctx.lineTo(l.x, ly - 15); ctx.stroke();
-    // Lantern body
+    // Glow
+    const gl = ctx.createRadialGradient(l.x, ly, 4, l.x, ly, 35);
+    gl.addColorStop(0, 'rgba(255,100,0,0.18)'); gl.addColorStop(1, 'rgba(255,100,0,0)');
+    ctx.fillStyle = gl; ctx.fillRect(l.x - 35, ly - 35, 70, 70);
+    // Body
     ctx.fillStyle = '#FF1744';
     ctx.beginPath(); ctx.ellipse(l.x, ly, 14, 18, 0, 0, Math.PI * 2); ctx.fill();
     ctx.strokeStyle = '#B71C1C'; ctx.lineWidth = 1; ctx.stroke();
@@ -803,10 +879,10 @@ function drawBG() {
     ctx.strokeStyle = '#FFD600'; ctx.lineWidth = 1.5;
     ctx.beginPath(); ctx.ellipse(l.x, ly - 8, 14, 3, 0, 0, Math.PI); ctx.stroke();
     ctx.beginPath(); ctx.ellipse(l.x, ly + 8, 14, 3, 0, Math.PI, Math.PI * 2); ctx.stroke();
-    // Glow
-    const gl = ctx.createRadialGradient(l.x, ly, 5, l.x, ly, 30);
-    gl.addColorStop(0, 'rgba(255,100,0,0.15)'); gl.addColorStop(1, 'rgba(255,100,0,0)');
-    ctx.fillStyle = gl; ctx.fillRect(l.x - 30, ly - 30, 60, 60);
+    // Inner glow
+    const ig = ctx.createRadialGradient(l.x, ly, 2, l.x, ly, 14);
+    ig.addColorStop(0, 'rgba(255,200,50,0.25)'); ig.addColorStop(1, 'rgba(255,200,50,0)');
+    ctx.fillStyle = ig; ctx.beginPath(); ctx.ellipse(l.x, ly, 14, 18, 0, 0, Math.PI * 2); ctx.fill();
   }
 }
 
