@@ -684,7 +684,7 @@ document.addEventListener('keydown', e => {
     if (e.code==='ArrowUp'||e.code==='ArrowDown') G.pauseSel=(G.pauseSel+1)%2;
     if (e.code==='Enter'||e.code==='Space') {
       if (G.pauseSel===0) { G.t0+=performance.now()-G.pauseT; G.paused=false; if(audioCtx)audioCtx.resume(); }
-      else { G.paused=false; stopBGM(); G.st=ST.SELECT; }
+      else { G.paused=false; stopBGM(); if(audioCtx)audioCtx.resume(); G.st=ST.SELECT; }
     }
     if (e.code==='Escape') { G.t0+=performance.now()-G.pauseT; G.paused=false; if(audioCtx)audioCtx.resume(); }
     return;
