@@ -81,18 +81,39 @@ const SONGS = [
     gogo: [[24,40]],
   },
   {
-    title: '호빵맨 마치', sub: 'Anpanman March', bpm: 124, dur: 68, speed: 270,
+    title: '호빵맨 마치', sub: 'Anpanman March', bpm: 126, dur: 68, speed: 270,
     diff: '쉬움', stars: 2, color: '#FF8A65',
     mp3: '호빵맨.mp3',
     pats: [
-      [[0,NT.DON],[2,NT.DON]], [[0,NT.DON],[2,NT.KA]],
-      [[0,NT.DON],[1,NT.DON],[2,NT.DON]], [[0,NT.BIG_DON]],
-      [[0,NT.KA],[2,NT.KA]], [], [[0,NT.DON],[2,NT.DON],[3,NT.KA]],
-      [[0,NT.DON]], [[0,NT.ROLL,2]], [],
+      [[0,NT.DON],[2,NT.DON]],                     // 행진 기본: 1,3박
+      [[0,NT.DON],[2,NT.DON],[3,NT.KA]],            // 행진+픽업
+      [[0,NT.DON],[1,NT.KA],[2,NT.DON]],            // 쿵딱쿵
+      [[0,NT.BIG_DON]],                              // 큰 악센트
+      [[0,NT.DON],[1,NT.DON],[2,NT.DON],[3,NT.DON]],// 4분음표 행진
+      [],                                            // 쉼
+      [[0,NT.DON],[2,NT.DON],[3,NT.DON]],            // 행진 변형
+      [[0,NT.DON],[1,NT.KA],[2,NT.DON],[3,NT.KA]],  // 쿵딱쿵딱
     ],
-    gogo: [[40,60],[80,100]],
+    gogo: [[58,88],[108,134]],
   },
   // ── 보통 (Normal) ──
+  {
+    title: '호빵맨 마치', sub: 'Anpanman March', bpm: 126, dur: 68, speed: 330,
+    diff: '보통', stars: 4, color: '#FF8A65',
+    mp3: '호빵맨.mp3',
+    pats: [
+      [[0,NT.DON],[1,NT.DON],[2,NT.DON],[3,NT.DON]],                    // 4분 행진
+      [[0,NT.DON],[0.5,NT.DON],[1,NT.KA],[2,NT.DON],[3,NT.KA]],         // 8분 디테일
+      [[0,NT.DON],[1,NT.KA],[2,NT.DON],[2.5,NT.DON],[3,NT.KA]],         // 싱코페이션
+      [[0,NT.BIG_DON],[2,NT.DON],[3,NT.KA]],                            // 악센트
+      [[0,NT.DON],[0.5,NT.KA],[1,NT.DON],[2,NT.DON],[2.5,NT.KA],[3,NT.DON]], // 행진 8분
+      [[0,NT.DON],[1,NT.DON],[2,NT.KA],[2.5,NT.KA],[3,NT.DON]],         // 쿵쿵딱딱쿵
+      [[0,NT.ROLL,2],[3,NT.DON]],                                        // 연타+착지
+      [[0,NT.BALLOON,8]],                                                // 풍선
+      [],
+    ],
+    gogo: [[58,88],[108,134]],
+  },
   {
     title: '축제장단', sub: 'Festival', bpm: 125, dur: 40, speed: 330,
     diff: '보통', stars: 4, color: '#FF9800',
@@ -273,6 +294,7 @@ const LANG_JA = {
   '콤보':'コンボ','Max콤보':'Maxコンボ','최대 콤보':'最大コンボ',
   '연타':'連打','연타!':'連打!','정확도':'正確度','혼':'魂',
   '펑!':'パン!','왼손':'左手','오른손':'右手','끝':'終',
+  '다시':'もう一回','돌아가기':'戻る','10초 안에 최대한 많이 쳐보세요!':'10秒以内にたくさん叩こう!',
   '쿵 (중앙): F / J 키  |  딱 (가장자리): D / K 키':'ドン (中央): F / J キー  |  カッ (フチ): D / K キー',
   '마우스/터치: 북 중앙 = 쿵  |  가장자리 = 딱':'マウス/タッチ: 太鼓の中央 = ドン  |  フチ = カッ',
   'SPACE / ENTER / 클릭으로 시작!':'SPACE / ENTER / クリックでスタート!',
@@ -584,8 +606,10 @@ function isKa(c) {
 function freeHit(don) {
   if (don) { playDon(); G.dh.don = 8; } else { playKa(); G.dh.ka = 8; }
   G.fhc++;
-  const isBig = Math.random() < 0.1;
-  G.fn.push({ type: don ? (isBig ? NT.BIG_DON : NT.DON) : (isBig ? NT.BIG_KA : NT.KA), t: performance.now() - G.ft0 });
+  if (!G.rollMode) {
+    const isBig = Math.random() < 0.1;
+    G.fn.push({ type: don ? (isBig ? NT.BIG_DON : NT.DON) : (isBig ? NT.BIG_KA : NT.KA), t: performance.now() - G.ft0 });
+  }
   G.chr = G.fhc % 10 === 0 ? 'excited' : 'happy'; G.chrT = 15; G.chrJ = 8;
   addParticles(CONFIG.DRUM_X, CONFIG.LANE_Y, don ? '#FF4444' : '#4488FF', 5);
 }
@@ -726,7 +750,7 @@ document.addEventListener('keydown', e => {
     if (e.code==='ArrowRight') G.selDiff = (G.selDiff+1) % 4;
     if (e.code==='Space'||e.code==='Enter') startGame(G.sel);
     if (e.code==='Escape') G.st = ST.TITLE;
-    if (e.code==='KeyT') startFree();
+    if (e.code==='KeyT') startFree(true);
     if (e.code==='KeyS') { const si = SPEED_OPTS.indexOf(G.speedMod); G.speedMod = SPEED_OPTS[(si+1)%3]; }
     if (e.code==='Digit2') G.twoP = !G.twoP;
     if (e.code==='KeyO') { G.st = ST.OPTIONS; G.optSel = 0; }
@@ -737,6 +761,11 @@ document.addEventListener('keydown', e => {
   if (G.st === ST.RESULT) { if (e.code==='Space'||e.code==='Enter') G.st = ST.SELECT; return; }
   if (G.st === ST.FREE) {
     if (e.code==='Escape') { stopBGM(); G.st = ST.SELECT; return; }
+    if (G.rollMode) {
+      const remain = G.rollTimer - (performance.now() - G.rollStart);
+      if (remain <= 0 && (e.code==='Space'||e.code==='Enter')) { G.fhc = 0; G.rollStart = performance.now(); return; }
+      if (remain <= 0) return;
+    }
     const dp=isDon(e.code), kp=isKa(e.code);
     if (dp) hit(true,dp); if (kp) hit(false,kp); return;
   }
@@ -778,8 +807,14 @@ function ptr(e) {
   const x = (e.clientX - r.left) * (CONFIG.WIDTH / r.width), y = (e.clientY - r.top) * (CONFIG.HEIGHT / r.height);
   if (G.st === ST.TITLE) { G.st = ST.SELECT; return; }
   if (G.st === ST.SELECT) {
-    // Free play button
-    if (x >= CONFIG.WIDTH / 2 - 110 && x <= CONFIG.WIDTH / 2 + 110 && y >= CONFIG.HEIGHT - 41 && y <= CONFIG.HEIGHT - 9) { startFree(); return; }
+    // Language badge
+    if (G.langBtnX && x >= G.langBtnX - 20 && x <= G.langBtnX + 5 && y >= 5 && y <= 30) { G.lang = G.lang === 'ko' ? 'ja' : 'ko'; return; }
+    // Free play button (left)
+    const fpx = CONFIG.WIDTH / 2 - 130;
+    if (x >= fpx - 100 && x <= fpx + 100 && y >= CONFIG.HEIGHT - 41 && y <= CONFIG.HEIGHT - 9) { startFree(false); return; }
+    // Roll mode button (right)
+    const rpx = CONFIG.WIDTH / 2 + 130;
+    if (x >= rpx - 100 && x <= rpx + 100 && y >= CONFIG.HEIGHT - 41 && y <= CONFIG.HEIGHT - 9) { startFree(true); return; }
     // Song cards (scroll-aware)
     const viewTop = 68, viewBot = CONFIG.HEIGHT - 52;
     if (y >= viewTop && y <= viewBot) {
@@ -795,10 +830,42 @@ function ptr(e) {
   }
   if (G.st === ST.RESULT) { G.st = ST.SELECT; return; }
   if (G.paused) return;
+  if (G.rollMode && G.rollTimer - (performance.now() - G.rollStart) <= 0) return;
   const ht = drumHitType(x, y);
   if (ht === 'don') hit(true,1); else if (ht === 'ka') hit(false,1);
 }
 canvas.addEventListener('mousedown', ptr);
+canvas.addEventListener('mousemove', e => {
+  const r = canvas.getBoundingClientRect();
+  const x = (e.clientX - r.left) * (CONFIG.WIDTH / r.width), y = (e.clientY - r.top) * (CONFIG.HEIGHT / r.height);
+  let pointer = false;
+  if (G.st === ST.TITLE) pointer = true;
+  else if (G.st === ST.SELECT) {
+    // Language badge
+    if (G.langBtnX && x >= G.langBtnX - 20 && x <= G.langBtnX + 5 && y >= 5 && y <= 30) pointer = true;
+    // Bottom buttons (free play + roll mode)
+    else if (y >= CONFIG.HEIGHT - 41 && y <= CONFIG.HEIGHT - 9) {
+      const fpx = CONFIG.WIDTH / 2 - 130, rpx = CONFIG.WIDTH / 2 + 130;
+      if ((x >= fpx - 100 && x <= fpx + 100) || (x >= rpx - 100 && x <= rpx + 100)) pointer = true;
+    }
+    // Song cards
+    else {
+      const viewTop = 68, viewBot = CONFIG.HEIGHT - 52;
+      if (y >= viewTop && y <= viewBot) {
+        const contentY = y - viewTop + G.selScrl;
+        for (let i = 0; i < SONGS.length; i++) {
+          const sy = SEL_LAYOUT.pos[i];
+          if (contentY >= sy - 29 && contentY <= sy + 29 && x >= 120 && x <= 840) { pointer = true; break; }
+        }
+      }
+    }
+  }
+  else if (G.st === ST.RESULT) pointer = true;
+  else if (G.st === ST.PLAYING || G.st === ST.FREE) {
+    if (drumHitType(x, y)) pointer = true;
+  }
+  canvas.style.cursor = pointer ? 'pointer' : 'default';
+});
 canvas.addEventListener('touchstart', e => { e.preventDefault(); for (const t of e.changedTouches) ptr(t); }, { passive: false });
 canvas.addEventListener('wheel', e => {
   if (G.st === ST.SELECT) {
@@ -829,10 +896,11 @@ function startGame(idx) {
     G.p2.dh={don:0,ka:0}; G.p2.comboMile=0;
   }
 }
-function startFree() {
+function startFree(rollMode) {
   initAudio(); G.song = SONGS[G.sel]; G.fn = []; G.ft0 = performance.now(); G.fhc = 0;
   G.fx = []; G.chr = 'idle'; G.chrT = 0; G.chrJ = 0;
-  G.st = ST.FREE; stopBGM(); playBGM(G.song);
+  G.rollMode = !!rollMode; G.rollBest = 0; G.rollTimer = 10000; G.rollStart = performance.now();
+  G.st = ST.FREE; stopBGM(); if (!rollMode) playBGM(G.song);
 }
 
 // ─── Draw Helpers ────────────────────────────────
@@ -1647,22 +1715,33 @@ function drawSelect() {
   if (G.micOn) {
     ctx.fillStyle = 'rgba(100,255,100,0.8)'; ctx.fillText('MIC', bx, 20); bx -= 40;
   }
-  ctx.fillStyle = 'rgba(255,220,100,0.8)'; ctx.fillText(G.lang === 'ko' ? 'KO' : 'JA', bx, 20); bx -= 30;
+  ctx.fillStyle = 'rgba(255,220,100,0.8)'; ctx.fillText(G.lang === 'ko' ? 'KO' : 'JA', bx, 20);
+  G.langBtnX = bx; bx -= 30;
 
   ctx.fillStyle = 'rgba(255,255,255,0.45)'; ctx.font = '11px sans-serif'; ctx.textAlign = 'center';
   ctx.fillText('\u2190\u2192 \uB09C\uC774\uB3C4  |  S: \uBC30\uC18D  |  2: 2P  |  M: \uB9C8\uC774\uD06C  |  O: \uC635\uC158  |  L: \uC5B8\uC5B4', CONFIG.WIDTH / 2, 52);
   drawChar(CONFIG.WIDTH - 40, 25, 24, 'happy');
 
-  // Fixed free play button at bottom
+  // Fixed bottom bar with free play + roll mode buttons
   ctx.fillStyle = 'rgba(30,10,0,0.75)'; ctx.fillRect(0, CONFIG.HEIGHT - 50, CONFIG.WIDTH, 50);
-  const fbx = CONFIG.WIDTH / 2, fby = CONFIG.HEIGHT - 25;
+  const fby = CONFIG.HEIGHT - 25;
+  // Free play button (left)
+  const fpx = CONFIG.WIDTH / 2 - 130;
   ctx.fillStyle = 'rgba(255,170,0,0.2)';
-  ctx.beginPath(); ctx.roundRect(fbx - 110, fby - 16, 220, 32, 16); ctx.fill();
+  ctx.beginPath(); ctx.roundRect(fpx - 100, fby - 16, 200, 32, 16); ctx.fill();
   ctx.strokeStyle = 'rgba(255,170,0,0.5)'; ctx.lineWidth = 1.5;
-  ctx.beginPath(); ctx.roundRect(fbx - 110, fby - 16, 220, 32, 16); ctx.stroke();
-  ctx.fillStyle = '#FFD600'; ctx.font = 'bold 14px sans-serif';
+  ctx.beginPath(); ctx.roundRect(fpx - 100, fby - 16, 200, 32, 16); ctx.stroke();
+  ctx.fillStyle = '#FFD600'; ctx.font = 'bold 13px sans-serif';
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText('🥁 ' + T('자유 모드') + ' / Free Play (T)', fbx, fby);
+  ctx.fillText('🥁 ' + T('자유 모드') + ' / Free Play', fpx, fby);
+  // Roll mode button (right)
+  const rpx = CONFIG.WIDTH / 2 + 130;
+  ctx.fillStyle = 'rgba(255,70,0,0.2)';
+  ctx.beginPath(); ctx.roundRect(rpx - 100, fby - 16, 200, 32, 16); ctx.fill();
+  ctx.strokeStyle = 'rgba(255,70,0,0.5)'; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.roundRect(rpx - 100, fby - 16, 200, 32, 16); ctx.stroke();
+  ctx.fillStyle = '#FF6D00'; ctx.font = 'bold 13px sans-serif';
+  ctx.fillText('🔥 ' + T('연타') + '! / Roll (T)', rpx, fby);
 }
 
 // ─── Result ──────────────────────────────────────
@@ -1825,30 +1904,74 @@ function drawFree() {
   // UI
   ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(0, 0, CONFIG.WIDTH, 55);
   ctx.fillStyle = '#8D6E63'; ctx.fillRect(0, 55, CONFIG.WIDTH, 3);
-  ctx.fillStyle = '#FFD600'; ctx.font = 'bold 22px sans-serif';
-  ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillText(T('자유 모드'), 15, 20);
-  ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.font = '12px sans-serif';
-  ctx.fillText('Free Play', 15, 42);
 
-  if (G.song) {
-    ctx.fillStyle = 'rgba(255,255,255,0.6)'; ctx.font = '13px sans-serif'; ctx.textAlign = 'right';
-    const prog = el / (G.song.dur * 1000);
-    ctx.fillText(prog > 1 ? `${T(G.song.title)} - ${T('끝')}` : `${T(G.song.title)} - ${G.song.bpm} BPM`, CONFIG.WIDTH - 15, 20);
-    // Mini progress
-    const bx = CONFIG.WIDTH - 220, bw = 200, by = 38;
-    ctx.fillStyle = 'rgba(255,255,255,0.1)'; ctx.beginPath(); ctx.roundRect(bx, by, bw, 5, 3); ctx.fill();
-    if (prog <= 1) {
-      ctx.fillStyle = G.song.color; ctx.beginPath(); ctx.roundRect(bx, by, bw * prog, 5, 3); ctx.fill();
+  if (G.rollMode) {
+    // Roll mode UI
+    const remain = Math.max(0, G.rollTimer - (performance.now() - G.rollStart));
+    if (remain <= 0 && G.fhc > G.rollBest) G.rollBest = G.fhc;
+    const sec = (remain / 1000).toFixed(1);
+
+    ctx.fillStyle = '#FF6D00'; ctx.font = 'bold 22px sans-serif';
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillText(T('연타') + '!', 15, 20);
+    ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.font = '12px sans-serif';
+    ctx.fillText('Roll Mode', 15, 42);
+
+    // Timer bar
+    const tbx = 200, tbw = 560, tby = 8, tbh = 12;
+    const tp = Math.min(1, remain / G.rollTimer);
+    ctx.fillStyle = 'rgba(255,255,255,0.1)'; ctx.beginPath(); ctx.roundRect(tbx, tby, tbw, tbh, 6); ctx.fill();
+    const tc = remain > 3000 ? '#FFD600' : '#FF1744';
+    ctx.fillStyle = tc; ctx.beginPath(); ctx.roundRect(tbx, tby, tbw * tp, tbh, 6); ctx.fill();
+    ctx.fillStyle = '#FFF'; ctx.font = 'bold 12px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText(sec + 's', tbx + tbw / 2, tby + tbh / 2 + 1);
+
+    // Hit count (big)
+    ctx.fillStyle = '#FFF'; ctx.font = 'bold 36px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText(`${G.fhc}`, CONFIG.WIDTH / 2, 46);
+
+    // Best record
+    if (G.rollBest > 0) {
+      ctx.fillStyle = 'rgba(255,220,100,0.7)'; ctx.font = 'bold 12px sans-serif'; ctx.textAlign = 'right';
+      ctx.fillText(`BEST: ${G.rollBest}`, CONFIG.WIDTH - 15, 20);
     }
+
+    // Time up
+    if (remain <= 0) {
+      ctx.fillStyle = 'rgba(0,0,0,0.4)'; ctx.fillRect(CONFIG.WIDTH / 2 - 180, 130, 360, 80);
+      ctx.fillStyle = '#FFD600'; ctx.font = 'bold 30px sans-serif'; ctx.textAlign = 'center';
+      ctx.fillText(`${G.fhc} ${T('연타')}!`, CONFIG.WIDTH / 2, 165);
+      ctx.fillStyle = 'rgba(255,255,255,0.6)'; ctx.font = '14px sans-serif';
+      ctx.fillText('SPACE: ' + T('다시') + '  |  ESC: ' + T('돌아가기'), CONFIG.WIDTH / 2, 195);
+    }
+
+    ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.font = '12px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText(T('10초 안에 최대한 많이 쳐보세요!') + '  |  ESC: ' + T('돌아가기'), CONFIG.WIDTH / 2, CONFIG.HEIGHT - 12);
+  } else {
+    ctx.fillStyle = '#FFD600'; ctx.font = 'bold 22px sans-serif';
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillText(T('자유 모드'), 15, 20);
+    ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.font = '12px sans-serif';
+    ctx.fillText('Free Play', 15, 42);
+
+    if (G.song) {
+      ctx.fillStyle = 'rgba(255,255,255,0.6)'; ctx.font = '13px sans-serif'; ctx.textAlign = 'right';
+      const prog = el / (G.song.dur * 1000);
+      ctx.fillText(prog > 1 ? `${T(G.song.title)} - ${T('끝')}` : `${T(G.song.title)} - ${G.song.bpm} BPM`, CONFIG.WIDTH - 15, 20);
+      // Mini progress
+      const bx = CONFIG.WIDTH - 220, bw = 200, by = 38;
+      ctx.fillStyle = 'rgba(255,255,255,0.1)'; ctx.beginPath(); ctx.roundRect(bx, by, bw, 5, 3); ctx.fill();
+      if (prog <= 1) {
+        ctx.fillStyle = G.song.color; ctx.beginPath(); ctx.roundRect(bx, by, bw * prog, 5, 3); ctx.fill();
+      }
+    }
+
+    ctx.fillStyle = '#FFF'; ctx.font = 'bold 20px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText(`${G.fhc}`, CONFIG.WIDTH / 2, 28);
+    ctx.fillStyle = 'rgba(255,255,255,0.4)'; ctx.font = '10px sans-serif';
+    ctx.fillText('HITS', CONFIG.WIDTH / 2, 44);
+
+    ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.font = '12px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText(T('자유롭게 북을 쳐보세요!  |  ESC: 돌아가기'), CONFIG.WIDTH / 2, CONFIG.HEIGHT - 12);
   }
-
-  ctx.fillStyle = '#FFF'; ctx.font = 'bold 20px sans-serif'; ctx.textAlign = 'center';
-  ctx.fillText(`${G.fhc}`, CONFIG.WIDTH / 2, 28);
-  ctx.fillStyle = 'rgba(255,255,255,0.4)'; ctx.font = '10px sans-serif';
-  ctx.fillText('HITS', CONFIG.WIDTH / 2, 44);
-
-  ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.font = '12px sans-serif'; ctx.textAlign = 'center';
-  ctx.fillText(T('자유롭게 북을 쳐보세요!  |  ESC: 돌아가기'), CONFIG.WIDTH / 2, CONFIG.HEIGHT - 12);
 
   // Mic processing in free mode
   processMic();
