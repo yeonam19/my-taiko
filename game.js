@@ -20,11 +20,12 @@ const CONFIG = {
   BAD_WINDOW: 200,
   NOTE_R: 22,
   BIG_NOTE_R: 33,
-  // Touch drums (left & right)
-  TDRUM_LX: 155, TDRUM_RX: 805,
+  // Touch drums (left=Ka, center=both, right=Don)
+  TDRUM_LX: 155, TDRUM_CX: 480, TDRUM_RX: 805,
   TDRUM_Y: 478,
   TDRUM_OR: 95,
   TDRUM_IR: 55,
+  TDRUM_SIDE_R: 70,
   // Mic
   MIC_FFT: 2048,
   MIC_SMOOTH: 0.8,
@@ -759,12 +760,17 @@ document.addEventListener('keydown', e => {
 document.addEventListener('keyup', e => { keys[e.code] = false; });
 
 function drumHitType(x, y) {
-  const dy = y - CONFIG.TDRUM_Y, or = CONFIG.TDRUM_OR, ir = CONFIG.TDRUM_IR;
-  for (const cx of [CONFIG.TDRUM_LX, CONFIG.TDRUM_RX]) {
-    const dist = Math.sqrt((x - cx) ** 2 + dy ** 2);
-    if (dist <= ir) return 'don';
-    if (dist <= or) return 'ka';
-  }
+  const dy = y - CONFIG.TDRUM_Y;
+  // Left drum (Ka only)
+  const distL = Math.sqrt((x - CONFIG.TDRUM_LX) ** 2 + dy ** 2);
+  if (distL <= CONFIG.TDRUM_SIDE_R) return 'ka';
+  // Right drum (Don only)
+  const distR = Math.sqrt((x - CONFIG.TDRUM_RX) ** 2 + dy ** 2);
+  if (distR <= CONFIG.TDRUM_SIDE_R) return 'don';
+  // Center drum (inner=Don, outer=Ka)
+  const distC = Math.sqrt((x - CONFIG.TDRUM_CX) ** 2 + dy ** 2);
+  if (distC <= CONFIG.TDRUM_IR) return 'don';
+  if (distC <= CONFIG.TDRUM_OR) return 'ka';
   return null;
 }
 function ptr(e) {
@@ -1190,8 +1196,8 @@ function drawNotes() {
     // Balloon note
     if (n.type === NT.BALLOON) {
       if (n.done) continue;
-      const x = CONFIG.DRUM_X + (n.time - G.elapsed) * px;
-      if (x < CONFIG.DRUM_X - 60 || x > CONFIG.WIDTH + 60) continue;
+      const x = Math.max(CONFIG.DRUM_X, CONFIG.DRUM_X + (n.time - G.elapsed) * px);
+      if (x > CONFIG.WIDTH + 60) continue;
       const prog = n.hits / n.reqHits, br = 28 + prog * 12;
       ctx.strokeStyle = '#999'; ctx.lineWidth = 1;
       ctx.beginPath(); ctx.moveTo(x, y + br); ctx.lineTo(x, y + br + 15); ctx.stroke();
@@ -1210,8 +1216,8 @@ function drawNotes() {
     // Kusudama note
     if (n.type === NT.KUSUDAMA) {
       if (n.done) continue;
-      const x = CONFIG.DRUM_X + (n.time - G.elapsed) * px;
-      if (x < CONFIG.DRUM_X - 60 || x > CONFIG.WIDTH + 60) continue;
+      const x = Math.max(CONFIG.DRUM_X, CONFIG.DRUM_X + (n.time - G.elapsed) * px);
+      if (x > CONFIG.WIDTH + 60) continue;
       const prog = n.hits / n.reqHits, kr = 32;
       ctx.beginPath(); ctx.arc(x, y, kr, 0, Math.PI * 2);
       const kg = ctx.createRadialGradient(x - 8, y - 10, 4, x, y, kr);
@@ -1234,9 +1240,9 @@ function drawNotes() {
     // Imo (sweet potato chain) note
     if (n.type === NT.IMO) {
       if (n.done) continue;
-      const x1 = CONFIG.DRUM_X + (n.time - G.elapsed) * px;
-      const x2 = CONFIG.DRUM_X + (n.end - G.elapsed) * px;
-      if (x2 < CONFIG.DRUM_X - 30 || x1 > CONFIG.WIDTH + 50) continue;
+      const x1 = Math.max(CONFIG.DRUM_X, CONFIG.DRUM_X + (n.time - G.elapsed) * px);
+      const x2 = Math.max(CONFIG.DRUM_X + 20, CONFIG.DRUM_X + (n.end - G.elapsed) * px);
+      if (x1 > CONFIG.WIDTH + 50) continue;
       const left = Math.max(x1, CONFIG.DRUM_X + CONFIG.DRUM_R + 5);
       const r = CONFIG.NOTE_R;
       ctx.fillStyle = '#8D6E63';
@@ -1409,41 +1415,56 @@ function drawFx() {
 
 // ─── Touch Drum ──────────────────────────────────
 function drawTDrum() {
-  const y = CONFIG.TDRUM_Y, or = CONFIG.TDRUM_OR, ir = CONFIG.TDRUM_IR;
-  const drums = [
-    { x: CONFIG.TDRUM_LX, label: T('왼손'), keys: ['D', 'F'] },
-    { x: CONFIG.TDRUM_RX, label: T('오른손'), keys: ['J', 'K'] },
-  ];
-  for (const d of drums) {
-    const x = d.x;
-    // Shadow
-    ctx.beginPath(); ctx.arc(x, y + 4, or + 4, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(0,0,0,0.2)'; ctx.fill();
-    // Outer ring (KA)
-    ctx.beginPath(); ctx.arc(x, y, or, 0, Math.PI * 2);
-    ctx.fillStyle = G.dh.ka > 0 ? '#64B5F6' : '#1565C0'; ctx.fill();
-    ctx.strokeStyle = '#1E88E5'; ctx.lineWidth = 3; ctx.stroke();
-    // Inner circle (DON)
-    ctx.beginPath(); ctx.arc(x, y, ir, 0, Math.PI * 2);
-    ctx.fillStyle = G.dh.don > 0 ? '#EF9A9A' : '#C62828'; ctx.fill();
-    ctx.strokeStyle = '#E53935'; ctx.lineWidth = 2; ctx.stroke();
-    // Labels
-    ctx.fillStyle = 'rgba(255,255,255,0.85)'; ctx.font = 'bold 20px sans-serif';
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText(T('쿵'), x, y);
-    ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.font = '11px sans-serif';
-    ctx.fillText(T('딱'), x, y - ir - 12);
-    // Hand label
-    ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.font = '11px sans-serif';
-    ctx.fillText(d.label, x, y + or + 15);
-    // Key hints
-    ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.font = '10px monospace';
-    ctx.fillText(d.keys[0] + ' ' + T('쿵') + ' / ' + d.keys[1] + ' ' + T('딱'), x, y - or - 10);
-  }
+  const cx = CONFIG.TDRUM_CX, y = CONFIG.TDRUM_Y;
+  const or = CONFIG.TDRUM_OR, ir = CONFIG.TDRUM_IR, sr = CONFIG.TDRUM_SIDE_R;
+
+  // ── Center drum (Don inner / Ka outer) ──
+  ctx.beginPath(); ctx.arc(cx, y + 4, or + 4, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(0,0,0,0.2)'; ctx.fill();
+  ctx.beginPath(); ctx.arc(cx, y, or, 0, Math.PI * 2);
+  ctx.fillStyle = G.dh.ka > 0 ? '#64B5F6' : '#1565C0'; ctx.fill();
+  ctx.strokeStyle = '#1E88E5'; ctx.lineWidth = 3; ctx.stroke();
+  ctx.beginPath(); ctx.arc(cx, y, ir, 0, Math.PI * 2);
+  ctx.fillStyle = G.dh.don > 0 ? '#EF9A9A' : '#C62828'; ctx.fill();
+  ctx.strokeStyle = '#E53935'; ctx.lineWidth = 2; ctx.stroke();
+  ctx.fillStyle = 'rgba(255,255,255,0.85)'; ctx.font = 'bold 20px sans-serif';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(T('쿵'), cx, y);
+  ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.font = '11px sans-serif';
+  ctx.fillText(T('딱'), cx, y - ir - 12);
+  ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.font = '10px monospace';
+  ctx.fillText('F ' + T('쿵') + ' / D ' + T('딱'), cx, y - or - 10);
+
+  // ── Left drum (Ka only) ──
+  const lx = CONFIG.TDRUM_LX;
+  ctx.beginPath(); ctx.arc(lx, y + 3, sr + 3, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(0,0,0,0.15)'; ctx.fill();
+  ctx.beginPath(); ctx.arc(lx, y, sr, 0, Math.PI * 2);
+  ctx.fillStyle = G.dh.ka > 0 ? '#64B5F6' : '#1565C0'; ctx.fill();
+  ctx.strokeStyle = '#1E88E5'; ctx.lineWidth = 3; ctx.stroke();
+  ctx.fillStyle = '#FFF'; ctx.font = 'bold 22px sans-serif';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(T('딱'), lx, y);
+  ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.font = '11px sans-serif';
+  ctx.fillText('K', lx, y + sr + 15);
+
+  // ── Right drum (Don only) ──
+  const rx = CONFIG.TDRUM_RX;
+  ctx.beginPath(); ctx.arc(rx, y + 3, sr + 3, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(0,0,0,0.15)'; ctx.fill();
+  ctx.beginPath(); ctx.arc(rx, y, sr, 0, Math.PI * 2);
+  ctx.fillStyle = G.dh.don > 0 ? '#EF9A9A' : '#C62828'; ctx.fill();
+  ctx.strokeStyle = '#E53935'; ctx.lineWidth = 3; ctx.stroke();
+  ctx.fillStyle = '#FFF'; ctx.font = 'bold 22px sans-serif';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(T('쿵'), rx, y);
+  ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.font = '11px sans-serif';
+  ctx.fillText('J', rx, y + sr + 15);
+
   // MIC badge
   if (G.micOn) {
     ctx.fillStyle = 'rgba(76,175,80,0.7)'; ctx.font = 'bold 11px sans-serif';
-    ctx.textAlign = 'center'; ctx.fillText('MIC', 480, y + or + 15);
+    ctx.textAlign = 'center'; ctx.fillText('MIC', cx, y + or + 15);
   }
 }
 
