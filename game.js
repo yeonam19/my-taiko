@@ -28,8 +28,9 @@ const CONFIG = {
   // Mic
   MIC_FFT: 2048,
   MIC_SMOOTH: 0.8,
-  MIC_COOLDOWN: 150,
-  MIC_LOW_END: 300,
+  MIC_COOLDOWN: 120,
+  MIC_LOW_END: 500,
+  MIC_HIGH_END: 4000,
 };
 
 const NT = { DON: 0, KA: 1, BIG_DON: 2, BIG_KA: 3, ROLL: 4, BALLOON: 5, IMO: 6, KUSUDAMA: 7 };
@@ -77,6 +78,18 @@ const SONGS = [
       [[0,NT.BIG_DON],[2,NT.DON]], [[0,NT.ROLL,2]], [],
     ],
     gogo: [[24,40]],
+  },
+  {
+    title: '호빵맨 마치', sub: 'Anpanman March', bpm: 124, dur: 68, speed: 270,
+    diff: '쉬움', stars: 2, color: '#FF8A65',
+    mp3: '호빵맨.mp3',
+    pats: [
+      [[0,NT.DON],[2,NT.DON]], [[0,NT.DON],[2,NT.KA]],
+      [[0,NT.DON],[1,NT.DON],[2,NT.DON]], [[0,NT.BIG_DON]],
+      [[0,NT.KA],[2,NT.KA]], [], [[0,NT.DON],[2,NT.DON],[3,NT.KA]],
+      [[0,NT.DON]], [[0,NT.ROLL,2]], [],
+    ],
+    gogo: [[40,60],[80,100]],
   },
   // ── 보통 (Normal) ──
   {
@@ -232,6 +245,40 @@ const SONGS = [
   },
 ];
 
+// ─── Language ────────────────────────────────────
+const LANG_JA = {
+  '쉬움':'かんたん','보통':'ふつう','어려움':'むずかしい','귀신':'おに',
+  '최고':'良','좋아':'可','빗나감':'不可',
+  '쿵':'ドン','딱':'カッ',
+  '첫걸음':'はじめの一歩','산책':'おさんぽ','반짝반짝 별':'きらきら星',
+  '호빵맨 마치':'アンパンマンマーチ',
+  '축제장단':'お祭りリズム','팝콘':'ポップコーン','여름바람':'夏の風',
+  '폭풍의 북':'嵐の太鼓','홍련화':'紅蓮華','질풍진뢰':'疾風迅雷',
+  '귀신 모드':'鬼モード','천본앵':'千本桜','북의 신':'太鼓の神',
+  '첫 클리어':'初クリア','첫 클리어!':'初クリア!',
+  '풀콤보!':'フルコンボ!','풀콤보 달성!':'フルコンボ達成!',
+  '50콤보':'50コンボ','50콤보 달성!':'50コンボ達成!',
+  '100콤보':'100コンボ','100콤보 달성!':'100コンボ達成!',
+  '10만점':'10万点','10만점 돌파!':'10万点突破!',
+  '귀신 퇴치':'鬼退治','귀신 클리어!':'鬼クリア!',
+  'S랭크':'Sランク','S랭크 달성!':'Sランク達成!',
+  '태고의 달인':'太鼓の達人','태고의 달인 웹 버전':'太鼓の達人 ウェブ版',
+  '곡을 선택하세요':'曲を選んでください','자유 모드':'フリーモード',
+  '일시정지':'ポーズ','계속하기':'続ける','그만두기':'やめる',
+  '결과 발표':'結果発表','클리어!':'クリア!','클리어':'クリア',
+  '옵션':'オプション','음량':'音量',
+  '타이밍 오프셋':'タイミングオフセット','노트 속도':'ノーツ速度',
+  '마이크 입력':'マイク入力','마이크 민감도':'マイク感度',
+  '콤보':'コンボ','Max콤보':'Maxコンボ','최대 콤보':'最大コンボ',
+  '연타':'連打','연타!':'連打!','정확도':'正確度','혼':'魂',
+  '펑!':'パン!','왼손':'左手','오른손':'右手','끝':'終',
+  '쿵 (중앙): F / J 키  |  딱 (가장자리): D / K 키':'ドン (中央): F / J キー  |  カッ (フチ): D / K キー',
+  '마우스/터치: 북 중앙 = 쿵  |  가장자리 = 딱':'マウス/タッチ: 太鼓の中央 = ドン  |  フチ = カッ',
+  'SPACE / ENTER / 클릭으로 시작!':'SPACE / ENTER / クリックでスタート!',
+  '자유롭게 북을 쳐보세요!  |  ESC: 돌아가기':'自由に太鼓を叩こう!  |  ESC: 戻る',
+};
+function T(s) { return (G.lang === 'ja' && LANG_JA[s]) || s; }
+
 // ─── Select Layout ──────────────────────────────
 const SEL_LAYOUT = (() => {
   const diffs = ['쉬움', '보통', '어려움', '귀신'];
@@ -278,7 +325,7 @@ function checkAch() {
 }
 
 // ─── Audio ───────────────────────────────────────
-let audioCtx = null, bgmNodes = [];
+let audioCtx = null, bgmNodes = [], mp3El = null;
 function initAudio() {
   if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
   if (audioCtx.state === 'suspended') audioCtx.resume();
@@ -306,6 +353,13 @@ function playKa() {
 }
 function playBGM(song) {
   if (!audioCtx) return;
+  // MP3 playback
+  if (song.mp3) {
+    mp3El = new Audio(song.mp3);
+    mp3El.volume = G.optVol * 0.6;
+    mp3El.play().catch(() => {});
+    return;
+  }
   const bd = 60 / song.bpm, tb = Math.floor(song.dur / bd);
   const m = audioCtx.createGain(); m.gain.value = 0.22 * G.optVol; m.connect(audioCtx.destination); bgmNodes.push(m);
   for (let i = 0; i < tb; i++) {
@@ -347,7 +401,10 @@ function playBGM(song) {
     o.connect(g); g.connect(m); o.start(t); o.stop(t + bd * 2); bgmNodes.push(o);
   }
 }
-function stopBGM() { bgmNodes.forEach(n => { try { n.disconnect(); } catch(e){} }); bgmNodes = []; }
+function stopBGM() {
+  bgmNodes.forEach(n => { try { n.disconnect(); } catch(e){} }); bgmNodes = [];
+  if (mp3El) { mp3El.pause(); mp3El.currentTime = 0; mp3El = null; }
+}
 
 // ─── Mic ─────────────────────────────────────────
 async function initMic() {
@@ -381,19 +438,20 @@ function processMic() {
   for (let i = 0; i < len; i++) sum += d[i];
   const avg = sum / len;
   G.micLevel = avg;
-  // Onset detection: current avg vs previous frame
+  // Onset detection: current avg vs slow baseline
   const onset = avg - G.micPrev;
-  G.micPrev = avg * 0.7 + G.micPrev * 0.3; // smoothed baseline
+  G.micPrev = avg * 0.08 + G.micPrev * 0.92; // very slow baseline for high sensitivity
   const now = performance.now();
   if (onset > G.micThreshold && now - G.micLastHit > CONFIG.MIC_COOLDOWN) {
-    // Frequency analysis: low vs high
+    // Frequency analysis: low band vs mid band (ignore dead upper range)
     const sr = audioCtx.sampleRate, binHz = sr / CONFIG.MIC_FFT;
-    const lowEnd = Math.min(Math.floor(CONFIG.MIC_LOW_END / binHz), len);
+    const lowBin = Math.min(Math.floor(CONFIG.MIC_LOW_END / binHz), len);
+    const highBin = Math.min(Math.floor(CONFIG.MIC_HIGH_END / binHz), len);
     let lowE = 0, highE = 0;
-    for (let i = 0; i < lowEnd; i++) lowE += d[i];
-    for (let i = lowEnd; i < len; i++) highE += d[i];
-    lowE /= Math.max(1, lowEnd);
-    highE /= Math.max(1, len - lowEnd);
+    for (let i = 0; i < lowBin; i++) lowE += d[i];
+    for (let i = lowBin; i < highBin; i++) highE += d[i];
+    lowE /= Math.max(1, lowBin);
+    highE /= Math.max(1, highBin - lowBin);
     const isDon = lowE >= highE;
     G.micLastHit = now;
     hit(isDon, 1);
@@ -465,8 +523,9 @@ const G = {
   // Combo milestone
   comboMile: 0,
   // Mic
+  lang: 'ko',
   micOn: false, micStream: null, micAnalyser: null, micData: null,
-  micThreshold: 40, micLastHit: 0, micLevel: 0, micPrev: 0,
+  micThreshold: 8, micLastHit: 0, micLevel: 0, micPrev: 0,
 };
 
 // Init decorations
@@ -541,7 +600,7 @@ function addComboMileFx(n) {
       vx:Math.cos(a)*(4+Math.random()*4), vy:Math.sin(a)*(4+Math.random()*4),
       color: n>=100?'#FF1744':'#FFD600', life:40, ml:40, r:4+Math.random()*4 });
   }
-  G.fx.push({ text:`${n} 콤보!`, color: n>=100?'#FF1744':'#FFD600',
+  G.fx.push({ text:`${n} ${T('콤보')}!`, color: n>=100?'#FF1744':'#FFD600',
     x:CONFIG.WIDTH/2, y:CONFIG.LANE_Y-50, life:60, ml:60 });
 }
 
@@ -569,7 +628,7 @@ function hit(don, player) {
       n.hits++; p.score+=100*gm;
       if (n.hits>=n.reqHits) { n.done=true; n.hit=true; p.score+=1000*gm;
         addParticles(CONFIG.DRUM_X,CONFIG.LANE_Y,'#FF4444',20);
-        G.fx.push({text:'펑!',color:'#FF4444',x:CONFIG.DRUM_X,y:CONFIG.LANE_Y-65,life:40,ml:40});
+        G.fx.push({text:T('펑!'),color:'#FF4444',x:CONFIG.DRUM_X,y:CONFIG.LANE_Y-65,life:40,ml:40});
         p.chr='excited'; p.chrT=30; p.chrJ=12;
       } else addParticles(CONFIG.DRUM_X,CONFIG.LANE_Y,'#FF8888',3);
       return;
@@ -581,7 +640,7 @@ function hit(don, player) {
       n.hits++; p.score+=100*gm;
       if (n.hits>=n.reqHits) { n.done=true; n.hit=true; p.score+=2000*gm;
         addParticles(CONFIG.DRUM_X,CONFIG.LANE_Y,'#FFD600',30);
-        G.fx.push({text:'펑!',color:'#FFD600',x:CONFIG.DRUM_X,y:CONFIG.LANE_Y-65,life:40,ml:40});
+        G.fx.push({text:T('펑!'),color:'#FFD600',x:CONFIG.DRUM_X,y:CONFIG.LANE_Y-65,life:40,ml:40});
         p.chr='excited'; p.chrT=40; p.chrJ=15;
       } else addParticles(CONFIG.DRUM_X,CONFIG.LANE_Y,'#FFAA00',3);
       return;
@@ -633,7 +692,7 @@ function hit(don, player) {
 
 function addJudgeFx(text) {
   const colors = { '최고': '#FF6600', '좋아': '#FFCC00', '빗나감': '#999' };
-  G.fx.push({ text, color: colors[text], x: CONFIG.DRUM_X, y: CONFIG.LANE_Y - 65, life: 40, ml: 40 });
+  G.fx.push({ text: T(text), color: colors[text], x: CONFIG.DRUM_X, y: CONFIG.LANE_Y - 65, life: 40, ml: 40 });
 }
 function addParticles(px, py, color, count) {
   for (let i = 0; i < count; i++) {
@@ -671,6 +730,7 @@ document.addEventListener('keydown', e => {
     if (e.code==='Digit2') G.twoP = !G.twoP;
     if (e.code==='KeyO') { G.st = ST.OPTIONS; G.optSel = 0; }
     if (e.code==='KeyM') toggleMic();
+    if (e.code==='KeyL') G.lang = G.lang === 'ko' ? 'ja' : 'ko';
     return;
   }
   if (G.st === ST.RESULT) { if (e.code==='Space'||e.code==='Enter') G.st = ST.SELECT; return; }
@@ -683,15 +743,15 @@ document.addEventListener('keydown', e => {
   if (G.paused) {
     if (e.code==='ArrowUp'||e.code==='ArrowDown') G.pauseSel=(G.pauseSel+1)%2;
     if (e.code==='Enter'||e.code==='Space') {
-      if (G.pauseSel===0) { G.t0+=performance.now()-G.pauseT; G.paused=false; if(audioCtx)audioCtx.resume(); }
+      if (G.pauseSel===0) { G.t0+=performance.now()-G.pauseT; G.paused=false; if(audioCtx)audioCtx.resume(); if(mp3El)mp3El.play(); }
       else { G.paused=false; stopBGM(); if(audioCtx)audioCtx.resume(); G.st=ST.SELECT; }
     }
-    if (e.code==='Escape') { G.t0+=performance.now()-G.pauseT; G.paused=false; if(audioCtx)audioCtx.resume(); }
+    if (e.code==='Escape') { G.t0+=performance.now()-G.pauseT; G.paused=false; if(audioCtx)audioCtx.resume(); if(mp3El)mp3El.play(); }
     return;
   }
   if (e.code==='Escape' && G.st===ST.PLAYING) {
     G.paused=true; G.pauseT=performance.now(); G.pauseSel=0;
-    if(audioCtx)audioCtx.suspend(); return;
+    if(audioCtx)audioCtx.suspend(); if(mp3El)mp3El.pause(); return;
   }
   const dp=isDon(e.code), kp=isKa(e.code);
   if (dp) hit(true,dp); if (kp) hit(false,kp);
@@ -925,7 +985,7 @@ function drawTopPanel() {
   if (G.song) {
     ctx.fillStyle = 'rgba(255,255,255,0.6)'; ctx.font = '13px sans-serif';
     ctx.textAlign = 'right';
-    ctx.fillText(`${G.song.title} (${DIFFS[G.selDiff]})`, CONFIG.WIDTH - 15, 18);
+    ctx.fillText(`${T(G.song.title)} (${T(DIFFS[G.selDiff])})`, CONFIG.WIDTH - 15, 18);
     ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.font = '11px sans-serif';
     ctx.fillText(`${G.song.bpm} BPM`, CONFIG.WIDTH - 15, 38);
   }
@@ -972,12 +1032,12 @@ function drawSoulGauge() {
   // 혼 label
   ctx.fillStyle = G.soul >= 70 ? '#FFD600' : '#FFF';
   ctx.font = 'bold 16px sans-serif'; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
-  ctx.fillText('혼', gx - 6, gy + gh / 2);
+  ctx.fillText(T('혼'), gx - 6, gy + gh / 2);
 
   // Clear text
   if (G.soul >= 70) {
     ctx.fillStyle = '#FFD600'; ctx.font = 'bold 10px sans-serif'; ctx.textAlign = 'left';
-    ctx.fillText('클리어', tx + 4, gy + gh / 2);
+    ctx.fillText(T('클리어'), tx + 4, gy + gh / 2);
   }
 
   // Border
@@ -1123,7 +1183,7 @@ function drawNotes() {
         ctx.fillText(n.hits, Math.max(x1, CONFIG.DRUM_X + CONFIG.DRUM_R + 15), y);
       }
       ctx.fillStyle = '#FFF'; ctx.font = 'bold 11px sans-serif'; ctx.textAlign = 'center';
-      ctx.fillText('연타!', (left + Math.min(x2, CONFIG.WIDTH)) / 2, y - r - 10);
+      ctx.fillText(T('연타!'), (left + Math.min(x2, CONFIG.WIDTH)) / 2, y - r - 10);
       continue;
     }
 
@@ -1194,7 +1254,7 @@ function drawNotes() {
       ctx.beginPath(); ctx.arc(x1, y, r + 3, 0, Math.PI * 2);
       ctx.fillStyle = '#6D4C41'; ctx.fill(); ctx.strokeStyle = '#FFF'; ctx.lineWidth = 2; ctx.stroke();
       ctx.fillStyle = n.nextDon ? '#E53935' : '#1E88E5'; ctx.font = 'bold 10px sans-serif';
-      ctx.textAlign = 'center'; ctx.fillText(n.nextDon ? '쿵' : '딱', x1, y - r - 10);
+      ctx.textAlign = 'center'; ctx.fillText(n.nextDon ? T('쿵') : T('딱'), x1, y - r - 10);
       ctx.fillStyle = '#FFF'; ctx.font = 'bold 13px sans-serif';
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.fillText(`${n.hits}/${n.reqHits}`, Math.max(x1, CONFIG.DRUM_X + CONFIG.DRUM_R + 15), y);
@@ -1320,7 +1380,7 @@ function drawCombo() {
   ctx.fillText(G.combo, 0, 0);
   ctx.shadowBlur = 0;
   ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.font = '10px sans-serif';
-  ctx.fillText('콤보', 0, 18);
+  ctx.fillText(T('콤보'), 0, 18);
   ctx.restore();
 }
 
@@ -1351,8 +1411,8 @@ function drawFx() {
 function drawTDrum() {
   const y = CONFIG.TDRUM_Y, or = CONFIG.TDRUM_OR, ir = CONFIG.TDRUM_IR;
   const drums = [
-    { x: CONFIG.TDRUM_LX, label: '왼손', keys: ['D', 'F'] },
-    { x: CONFIG.TDRUM_RX, label: '오른손', keys: ['J', 'K'] },
+    { x: CONFIG.TDRUM_LX, label: T('왼손'), keys: ['D', 'F'] },
+    { x: CONFIG.TDRUM_RX, label: T('오른손'), keys: ['J', 'K'] },
   ];
   for (const d of drums) {
     const x = d.x;
@@ -1370,15 +1430,15 @@ function drawTDrum() {
     // Labels
     ctx.fillStyle = 'rgba(255,255,255,0.85)'; ctx.font = 'bold 20px sans-serif';
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText('쿵', x, y);
+    ctx.fillText(T('쿵'), x, y);
     ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.font = '11px sans-serif';
-    ctx.fillText('딱', x, y - ir - 12);
+    ctx.fillText(T('딱'), x, y - ir - 12);
     // Hand label
     ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.font = '11px sans-serif';
     ctx.fillText(d.label, x, y + or + 15);
     // Key hints
     ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.font = '10px monospace';
-    ctx.fillText(d.keys[0] + ' 쿵 / ' + d.keys[1] + ' 딱', x, y - or - 10);
+    ctx.fillText(d.keys[0] + ' ' + T('쿵') + ' / ' + d.keys[1] + ' ' + T('딱'), x, y - or - 10);
   }
   // MIC badge
   if (G.micOn) {
@@ -1419,8 +1479,8 @@ function drawTitle() {
   ctx.save(); ctx.translate(CONFIG.WIDTH / 2, 90); ctx.scale(p, p);
   // Shadow
   ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.font = 'bold 54px sans-serif';
-  ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('태고의 달인', 3, 3);
-  ctx.fillStyle = '#FFF'; ctx.fillText('태고의 달인', 0, 0);
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(T('태고의 달인'), 3, 3);
+  ctx.fillStyle = '#FFF'; ctx.fillText(T('태고의 달인'), 0, 0);
   ctx.fillStyle = 'rgba(255,255,255,0.7)'; ctx.font = '16px sans-serif';
   ctx.fillText('Web Taiko', 0, 35);
   ctx.restore();
@@ -1429,15 +1489,15 @@ function drawTitle() {
   ctx.fillStyle = 'rgba(0,0,0,0.35)';
   ctx.beginPath(); ctx.roundRect(CONFIG.WIDTH / 2 - 250, 340, 500, 95, 12); ctx.fill();
   ctx.fillStyle = 'rgba(255,255,255,0.8)'; ctx.font = '14px sans-serif'; ctx.textAlign = 'center';
-  ctx.fillText('쿵 (중앙): F / J 키  |  딱 (가장자리): D / K 키', CONFIG.WIDTH / 2, 370);
-  ctx.fillText('마우스/터치: 북 중앙 = 쿵  |  가장자리 = 딱', CONFIG.WIDTH / 2, 395);
+  ctx.fillText(T('쿵 (중앙): F / J 키  |  딱 (가장자리): D / K 키'), CONFIG.WIDTH / 2, 370);
+  ctx.fillText(T('마우스/터치: 북 중앙 = 쿵  |  가장자리 = 딱'), CONFIG.WIDTH / 2, 395);
   ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.font = '12px sans-serif';
-  ctx.fillText('태고의 달인 웹 버전', CONFIG.WIDTH / 2, 420);
+  ctx.fillText(T('태고의 달인 웹 버전'), CONFIG.WIDTH / 2, 420);
 
   // Start
   if (Math.sin(t / 400) > 0) {
     ctx.fillStyle = '#FFD600'; ctx.font = 'bold 22px sans-serif';
-    ctx.fillText('SPACE / ENTER / 클릭으로 시작!', CONFIG.WIDTH / 2, 500);
+    ctx.fillText(T('SPACE / ENTER / 클릭으로 시작!'), CONFIG.WIDTH / 2, 500);
   }
 }
 
@@ -1465,7 +1525,7 @@ function drawSelect() {
     if (hy < viewTop - 30 || hy > viewBot + 10) continue;
     ctx.fillStyle = diffColors[h.diff] || '#FFF'; ctx.font = 'bold 15px sans-serif';
     ctx.textAlign = 'left'; ctx.textBaseline = 'top';
-    ctx.fillText(`── ${h.diff} ──`, 130, hy + 5);
+    ctx.fillText(`── ${T(h.diff)} ──`, 130, hy + 5);
   }
 
   // Song cards
@@ -1498,7 +1558,7 @@ function drawSelect() {
     // Title
     ctx.fillStyle = sel ? '#FFF' : 'rgba(255,255,255,0.6)';
     ctx.font = `bold ${sel ? 20 : 18}px sans-serif`; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-    ctx.fillText(sg.title, cx + 22, y - 8);
+    ctx.fillText(T(sg.title), cx + 22, y - 8);
 
     // Sub
     ctx.fillStyle = 'rgba(255,255,255,0.4)'; ctx.font = '11px sans-serif';
@@ -1542,7 +1602,7 @@ function drawSelect() {
   ctx.fillStyle = '#8D6E63'; ctx.fillRect(0, 66, CONFIG.WIDTH, 2);
   ctx.fillStyle = '#FFD600'; ctx.font = 'bold 24px sans-serif';
   ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-  ctx.fillText('곡을 선택하세요', 15, 20);
+  ctx.fillText(T('곡을 선택하세요'), 15, 20);
 
   // Difficulty tabs
   for (let d = 0; d < 4; d++) {
@@ -1551,7 +1611,7 @@ function drawSelect() {
     ctx.beginPath(); ctx.roundRect(tx, 8, 85, 24, 6); ctx.fill();
     ctx.fillStyle = d === G.selDiff ? '#FFF' : 'rgba(255,255,255,0.5)';
     ctx.font = `${d === G.selDiff ? 'bold ' : ''}11px sans-serif`; ctx.textAlign = 'center';
-    ctx.fillText(DIFFS[d], tx + 42, 20);
+    ctx.fillText(T(DIFFS[d]), tx + 42, 20);
   }
 
   // Speed & 2P badges
@@ -1566,9 +1626,10 @@ function drawSelect() {
   if (G.micOn) {
     ctx.fillStyle = 'rgba(100,255,100,0.8)'; ctx.fillText('MIC', bx, 20); bx -= 40;
   }
+  ctx.fillStyle = 'rgba(255,220,100,0.8)'; ctx.fillText(G.lang === 'ko' ? 'KO' : 'JA', bx, 20); bx -= 30;
 
   ctx.fillStyle = 'rgba(255,255,255,0.45)'; ctx.font = '11px sans-serif'; ctx.textAlign = 'center';
-  ctx.fillText('\u2190\u2192 \uB09C\uC774\uB3C4  |  S: \uBC30\uC18D  |  2: 2P  |  M: \uB9C8\uC774\uD06C  |  O: \uC635\uC158', CONFIG.WIDTH / 2, 52);
+  ctx.fillText('\u2190\u2192 \uB09C\uC774\uB3C4  |  S: \uBC30\uC18D  |  2: 2P  |  M: \uB9C8\uC774\uD06C  |  O: \uC635\uC158  |  L: \uC5B8\uC5B4', CONFIG.WIDTH / 2, 52);
   drawChar(CONFIG.WIDTH - 40, 25, 24, 'happy');
 
   // Fixed free play button at bottom
@@ -1580,7 +1641,7 @@ function drawSelect() {
   ctx.beginPath(); ctx.roundRect(fbx - 110, fby - 16, 220, 32, 16); ctx.stroke();
   ctx.fillStyle = '#FFD600'; ctx.font = 'bold 14px sans-serif';
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText('🥁 자유 모드 / Free Play (T)', fbx, fby);
+  ctx.fillText('🥁 ' + T('자유 모드') + ' / Free Play (T)', fbx, fby);
 }
 
 // ─── Result ──────────────────────────────────────
@@ -1597,19 +1658,19 @@ function drawResult() {
   // Banner
   if (fc) {
     ctx.fillStyle = '#FFD600'; ctx.font = 'bold 38px sans-serif'; ctx.textAlign = 'center';
-    ctx.fillText('🎊 풀콤보!! 🎊', CONFIG.WIDTH / 2, 50);
+    ctx.fillText('🎊 ' + T('풀콤보!') + '! 🎊', CONFIG.WIDTH / 2, 50);
   } else if (cleared) {
     ctx.fillStyle = '#FF6D00'; ctx.font = 'bold 34px sans-serif'; ctx.textAlign = 'center';
-    ctx.fillText('클리어!', CONFIG.WIDTH / 2, 50);
+    ctx.fillText(T('클리어!'), CONFIG.WIDTH / 2, 50);
   } else {
     ctx.fillStyle = '#999'; ctx.font = 'bold 34px sans-serif'; ctx.textAlign = 'center';
-    ctx.fillText('결과 발표', CONFIG.WIDTH / 2, 50);
+    ctx.fillText(T('결과 발표'), CONFIG.WIDTH / 2, 50);
   }
 
   // Song
   if (G.song) {
     ctx.fillStyle = 'rgba(255,255,255,0.6)'; ctx.font = '15px sans-serif';
-    ctx.fillText(`${G.song.title} (${G.song.diff})`, CONFIG.WIDTH / 2, 80);
+    ctx.fillText(`${T(G.song.title)} (${T(G.song.diff)})`, CONFIG.WIDTH / 2, 80);
   }
 
   // Score
@@ -1634,13 +1695,13 @@ function drawResult() {
   sg.addColorStop(0, '#42A5F5'); sg.addColorStop(1, G.soul >= 70 ? '#FF1744' : '#FFC107');
   ctx.fillStyle = sg; ctx.beginPath(); ctx.roundRect(sgx, sgy, sgw * G.soul / 100, sgh, 4); ctx.fill();
   ctx.fillStyle = '#FFF'; ctx.font = 'bold 11px sans-serif'; ctx.textAlign = 'center';
-  ctx.fillText(`혼 ${Math.floor(G.soul)}%`, CONFIG.WIDTH / 2, sgy + sgh / 2 + 1);
+  ctx.fillText(`${T('혼')} ${Math.floor(G.soul)}%`, CONFIG.WIDTH / 2, sgy + sgh / 2 + 1);
 
   // Stats
   const stats = [
-    ['최고', G.perf, '#FF6D00'], ['좋아', G.good, '#FFD600'], ['빗나감', G.miss, '#999'],
-    ['최대 콤보', G.maxCombo, '#FF1744'], ['연타', G.rollHits, '#FFC107'],
-    ['정확도', acc.toFixed(1) + '%', '#42A5F5'],
+    [T('최고'), G.perf, '#FF6D00'], [T('좋아'), G.good, '#FFD600'], [T('빗나감'), G.miss, '#999'],
+    [T('최대 콤보'), G.maxCombo, '#FF1744'], [T('연타'), G.rollHits, '#FFC107'],
+    [T('정확도'), acc.toFixed(1) + '%', '#42A5F5'],
   ];
   let sy = 310;
   for (const [l, v, c] of stats) {
@@ -1662,7 +1723,7 @@ function drawResult() {
     ctx.fillText(String(Math.floor(G.p2.score)).padStart(7,'0'), CONFIG.WIDTH/2 + 290, 150);
     const p2stats = [
       ['\u826F', G.p2.perf, '#FF6D00'], ['\u53EF', G.p2.good, '#FFD600'], ['\u4E0D\u53EF', G.p2.miss, '#999'],
-      ['Max콤보', G.p2.maxCombo, '#FF1744'],
+      [T('Max콤보'), G.p2.maxCombo, '#FF1744'],
     ];
     let p2sy = 180;
     for (const [l,v,c] of p2stats) {
@@ -1744,14 +1805,14 @@ function drawFree() {
   ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(0, 0, CONFIG.WIDTH, 55);
   ctx.fillStyle = '#8D6E63'; ctx.fillRect(0, 55, CONFIG.WIDTH, 3);
   ctx.fillStyle = '#FFD600'; ctx.font = 'bold 22px sans-serif';
-  ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillText('자유 모드', 15, 20);
+  ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillText(T('자유 모드'), 15, 20);
   ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.font = '12px sans-serif';
   ctx.fillText('Free Play', 15, 42);
 
   if (G.song) {
     ctx.fillStyle = 'rgba(255,255,255,0.6)'; ctx.font = '13px sans-serif'; ctx.textAlign = 'right';
     const prog = el / (G.song.dur * 1000);
-    ctx.fillText(prog > 1 ? `${G.song.title} - 끝` : `${G.song.title} - ${G.song.bpm} BPM`, CONFIG.WIDTH - 15, 20);
+    ctx.fillText(prog > 1 ? `${T(G.song.title)} - ${T('끝')}` : `${T(G.song.title)} - ${G.song.bpm} BPM`, CONFIG.WIDTH - 15, 20);
     // Mini progress
     const bx = CONFIG.WIDTH - 220, bw = 200, by = 38;
     ctx.fillStyle = 'rgba(255,255,255,0.1)'; ctx.beginPath(); ctx.roundRect(bx, by, bw, 5, 3); ctx.fill();
@@ -1766,7 +1827,7 @@ function drawFree() {
   ctx.fillText('HITS', CONFIG.WIDTH / 2, 44);
 
   ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.font = '12px sans-serif'; ctx.textAlign = 'center';
-  ctx.fillText('자유롭게 북을 쳐보세요!  |  ESC: 돌아가기', CONFIG.WIDTH / 2, CONFIG.HEIGHT - 12);
+  ctx.fillText(T('자유롭게 북을 쳐보세요!  |  ESC: 돌아가기'), CONFIG.WIDTH / 2, CONFIG.HEIGHT - 12);
 
   // Mic processing in free mode
   processMic();
@@ -1780,8 +1841,8 @@ function drawPause() {
   ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(0, 0, CONFIG.WIDTH, CONFIG.HEIGHT);
   ctx.fillStyle = '#FFF'; ctx.font = 'bold 36px sans-serif';
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText('일시정지', CONFIG.WIDTH/2, 180);
-  const opts = ['\u25B6 계속하기', '\u2716 그만두기'];
+  ctx.fillText(T('일시정지'), CONFIG.WIDTH/2, 180);
+  const opts = ['\u25B6 ' + T('계속하기'), '\u2716 ' + T('그만두기')];
   for (let i = 0; i < 2; i++) {
     const oy = 260 + i * 60;
     ctx.fillStyle = G.pauseSel === i ? 'rgba(255,200,0,0.25)' : 'rgba(255,255,255,0.08)';
@@ -1811,7 +1872,7 @@ function drawCountdown() {
   ctx.scale(scale, scale); ctx.globalAlpha = alpha;
   ctx.fillStyle = '#FFD600'; ctx.font = 'bold 120px sans-serif';
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText(num > 0 ? num : '쿵!', 0, 0);
+  ctx.fillText(num > 0 ? num : T('쿵') + '!', 0, 0);
   ctx.restore();
 }
 
@@ -1821,13 +1882,13 @@ function drawOptions() {
   ctx.fillStyle = 'rgba(0,0,0,0.55)'; ctx.fillRect(0, 0, CONFIG.WIDTH, CONFIG.HEIGHT);
   ctx.fillStyle = '#FFD600'; ctx.font = 'bold 30px sans-serif';
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText('옵션', CONFIG.WIDTH/2, 60);
+  ctx.fillText(T('옵션'), CONFIG.WIDTH/2, 60);
   const items = [
-    ['음량', `${Math.round(G.optVol*100)}%`],
-    ['타이밍 오프셋', `${G.optOffset}ms`],
-    ['노트 속도', `x${G.speedMod}`],
-    ['마이크 입력', G.micOn ? 'ON' : 'OFF'],
-    ['마이크 민감도', `${G.micThreshold}`],
+    [T('음량'), `${Math.round(G.optVol*100)}%`],
+    [T('타이밍 오프셋'), `${G.optOffset}ms`],
+    [T('노트 속도'), `x${G.speedMod}`],
+    [T('마이크 입력'), G.micOn ? 'ON' : 'OFF'],
+    [T('마이크 민감도'), `${G.micThreshold}`],
   ];
   for (let i = 0; i < items.length; i++) {
     const iy = 130 + i * 65;
@@ -1879,9 +1940,9 @@ function drawAchPopup() {
   ctx.strokeStyle = '#FFD600'; ctx.lineWidth = 2;
   ctx.beginPath(); ctx.roundRect(bx, by, 360, 50, 10); ctx.stroke();
   ctx.fillStyle = '#FFD600'; ctx.font = 'bold 14px sans-serif'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-  ctx.fillText('\u2605 ' + a.name, bx + 15, by + 18);
+  ctx.fillText('\u2605 ' + T(a.name), bx + 15, by + 18);
   ctx.fillStyle = 'rgba(255,255,255,0.7)'; ctx.font = '12px sans-serif';
-  ctx.fillText(a.desc, bx + 15, by + 36);
+  ctx.fillText(T(a.desc), bx + 15, by + 36);
   ctx.restore();
 }
 
