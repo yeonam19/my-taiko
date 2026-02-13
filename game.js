@@ -807,6 +807,8 @@ function ptr(e) {
   const x = (e.clientX - r.left) * (CONFIG.WIDTH / r.width), y = (e.clientY - r.top) * (CONFIG.HEIGHT / r.height);
   if (G.st === ST.TITLE) { G.st = ST.SELECT; return; }
   if (G.st === ST.SELECT) {
+    // MIC badge
+    if (G.micBtnX && x >= G.micBtnX - 25 && x <= G.micBtnX + 5 && y >= 5 && y <= 30) { toggleMic(); return; }
     // Language badge
     if (G.langBtnX && x >= G.langBtnX - 20 && x <= G.langBtnX + 5 && y >= 5 && y <= 30) { G.lang = G.lang === 'ko' ? 'ja' : 'ko'; return; }
     // Free play button (left)
@@ -841,8 +843,9 @@ canvas.addEventListener('mousemove', e => {
   let pointer = false;
   if (G.st === ST.TITLE) pointer = true;
   else if (G.st === ST.SELECT) {
-    // Language badge
-    if (G.langBtnX && x >= G.langBtnX - 20 && x <= G.langBtnX + 5 && y >= 5 && y <= 30) pointer = true;
+    // MIC / Language badges
+    if (G.micBtnX && x >= G.micBtnX - 25 && x <= G.micBtnX + 5 && y >= 5 && y <= 30) pointer = true;
+    else if (G.langBtnX && x >= G.langBtnX - 20 && x <= G.langBtnX + 5 && y >= 5 && y <= 30) pointer = true;
     // Bottom buttons (free play + roll mode)
     else if (y >= CONFIG.HEIGHT - 41 && y <= CONFIG.HEIGHT - 9) {
       const fpx = CONFIG.WIDTH / 2 - 130, rpx = CONFIG.WIDTH / 2 + 130;
@@ -1712,9 +1715,8 @@ function drawSelect() {
   if (G.twoP) {
     ctx.fillStyle = 'rgba(255,100,100,0.8)'; ctx.fillText('2P', bx, 20); bx -= 30;
   }
-  if (G.micOn) {
-    ctx.fillStyle = 'rgba(100,255,100,0.8)'; ctx.fillText('MIC', bx, 20); bx -= 40;
-  }
+  ctx.fillStyle = G.micOn ? 'rgba(100,255,100,0.8)' : 'rgba(255,255,255,0.3)';
+  ctx.fillText('MIC', bx, 20); G.micBtnX = bx; bx -= 40;
   ctx.fillStyle = 'rgba(255,220,100,0.8)'; ctx.fillText(G.lang === 'ko' ? 'KO' : 'JA', bx, 20);
   G.langBtnX = bx; bx -= 30;
 
