@@ -872,6 +872,12 @@ function drumHitType(x, y) {
 function ptr(e) {
   const r = canvas.getBoundingClientRect();
   const x = (e.clientX - r.left) * (CONFIG.WIDTH / r.width), y = (e.clientY - r.top) * (CONFIG.HEIGHT / r.height);
+  if (G.st === ST.OPTIONS) {
+    // Close (X) button
+    const cbx = CONFIG.WIDTH - 40, cby = 40;
+    if ((x - cbx) * (x - cbx) + (y - cby) * (y - cby) <= 18 * 18) { G.st = ST.SELECT; return; }
+    return;
+  }
   if (G.st === ST.TITLE) { G.st = ST.SELECT; return; }
   if (G.st === ST.SELECT) {
     // AUTO badge
@@ -978,6 +984,10 @@ canvas.addEventListener('mousemove', e => {
         if (x >= CONFIG.WIDTH/2 - 160 && x <= CONFIG.WIDTH/2 + 160 && y >= oy - 22 && y <= oy + 22) pointer = true;
       }
     }
+  }
+  else if (G.st === ST.OPTIONS) {
+    const cbx = CONFIG.WIDTH - 40, cby = 40;
+    if ((x - cbx) * (x - cbx) + (y - cby) * (y - cby) <= 18 * 18) pointer = true;
   }
   canvas.style.cursor = pointer ? 'pointer' : 'default';
 });
@@ -2358,6 +2368,14 @@ function drawOptions() {
 
   ctx.fillStyle = 'rgba(255,255,255,0.4)'; ctx.font = '12px sans-serif'; ctx.textAlign = 'center';
   ctx.fillText('\u2191\u2193 \uC120\uD0DD  |  \u2190\u2192 \uC870\uC808  |  ESC \uB3CC\uC544\uAC00\uAE30', CONFIG.WIDTH/2, CONFIG.HEIGHT - 40);
+
+  // Close (X) button - top right
+  const cbx = CONFIG.WIDTH - 40, cby = 40;
+  ctx.fillStyle = 'rgba(255,255,255,0.15)';
+  ctx.beginPath(); ctx.arc(cbx, cby, 18, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,0.7)'; ctx.lineWidth = 2.5; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(cbx - 7, cby - 7); ctx.lineTo(cbx + 7, cby + 7); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cbx + 7, cby - 7); ctx.lineTo(cbx - 7, cby + 7); ctx.stroke();
 }
 
 // ─── Achievement Popup ──────────────────────────
