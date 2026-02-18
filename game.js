@@ -2451,9 +2451,7 @@ function update() {
       if (n.type < NT.ROLL && Math.abs(n.time - G.elapsed) < 20) {
         hit(n.type === NT.DON || n.type === NT.BIG_DON, 1); break;
       }
-      if (n.type === NT.ROLL && G.elapsed >= n.time && G.elapsed <= n.end) {
-        if (Math.floor(G.elapsed / 50) % 2 === 0) hit(true, 1); break;
-      }
+      if (n.type === NT.ROLL) continue;
       if (n.type === NT.BALLOON && G.elapsed >= n.time && G.elapsed <= n.time + 4000) {
         if (Math.floor(G.elapsed / 60) % 2 === 0) hit(true, 1); break;
       }
